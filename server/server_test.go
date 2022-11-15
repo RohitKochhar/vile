@@ -73,12 +73,16 @@ func TestGet(t *testing.T) {
 func TestPut(t *testing.T) {
 	testCases := []struct {
 		name    string // Name of test
-		key     string // URL path to PUT
+		path    string // Path to use
+		key     string // key to PUT
 		value   string // Value to PUT
 		expCode int    // Expected result
 	}{
 		{
-			"TestSimplePut", "testKey", "val", http.StatusCreated,
+			"TestShortPut", "/", "testKey", "val", http.StatusCreated,
+		},
+		{
+			"TestLongPut", "/v1/key/", "testKey", "val", http.StatusCreated,
 		},
 	}
 	// Create a test server hosting the API
@@ -90,7 +94,7 @@ func TestPut(t *testing.T) {
 			var (
 				err error
 			)
-			path := url + "/v1/key/" + tc.key
+			path := url + tc.path + tc.key
 			req, err := http.NewRequest(
 				http.MethodPut,
 				path,
@@ -120,69 +124,72 @@ func TestIntegration(t *testing.T) {
 	// Put a value in the store
 	key := "testKey"
 	val := "testVal"
-	path := url + "/v1/key/" + key
-	req, err := http.NewRequest(
-		http.MethodPut,
-		path,
-		bytes.NewBuffer([]byte(val)),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "text/plain")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusCreated),
-			http.StatusText(resp.StatusCode))
-	}
-	// Get the newly put value
-	r, err := http.Get(path)
-	if err != nil {
-		t.Error(err)
-	}
-	defer r.Body.Close()
-	if r.StatusCode != http.StatusOK {
-		t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusFound),
-			http.StatusText(r.StatusCode))
-	}
-	var body []byte
-	switch {
-	case strings.Contains(r.Header.Get("Content-Type"), "text/plain"):
-		if body, err = io.ReadAll(r.Body); err != nil {
+	paths := []string{"/", "/v1/key/"}
+	for _, p := range paths {
+		path := url + p + key
+		req, err := http.NewRequest(
+			http.MethodPut,
+			path,
+			bytes.NewBuffer([]byte(val)),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "text/plain")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusCreated),
+				http.StatusText(resp.StatusCode))
+		}
+		// Get the newly put value
+		r, err := http.Get(path)
+		if err != nil {
 			t.Error(err)
 		}
-		if !strings.Contains(string(body), val) {
-			t.Errorf("Expected %q, got %q.", val,
-				string(body))
+		defer r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusFound),
+				http.StatusText(r.StatusCode))
 		}
-	default:
-		t.Fatalf("Unsupported Content-Type: %q", r.Header.Get("Content-Type"))
-	}
-	// Delete the value
-	req, err = http.NewRequest(
-		http.MethodDelete,
-		path,
-		bytes.NewBuffer([]byte("")),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "text/plain")
-	resp, err = http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusOK),
-			http.StatusText(resp.StatusCode))
-	}
-	// Try and get the value, should fail since it was just deleted
-	r, err = http.Get(path)
-	if err != nil {
-		t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusNotFound),
-			http.StatusText(r.StatusCode))
+		var body []byte
+		switch {
+		case strings.Contains(r.Header.Get("Content-Type"), "text/plain"):
+			if body, err = io.ReadAll(r.Body); err != nil {
+				t.Error(err)
+			}
+			if !strings.Contains(string(body), val) {
+				t.Errorf("Expected %q, got %q.", val,
+					string(body))
+			}
+		default:
+			t.Fatalf("Unsupported Content-Type: %q", r.Header.Get("Content-Type"))
+		}
+		// Delete the value
+		req, err = http.NewRequest(
+			http.MethodDelete,
+			path,
+			bytes.NewBuffer([]byte("")),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "text/plain")
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusOK),
+				http.StatusText(resp.StatusCode))
+		}
+		// Try and get the value, should fail since it was just deleted
+		r, err = http.Get(path)
+		if err != nil {
+			t.Fatalf("Expected %q, got %q.", http.StatusText(http.StatusNotFound),
+				http.StatusText(r.StatusCode))
+		}
 	}
 }

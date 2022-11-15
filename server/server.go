@@ -10,10 +10,16 @@ import (
 // NewMux creates a mux.NewRouter and attaches handlers to it
 func NewMux() http.Handler {
 	r := mux.NewRouter()
+	// Root path can be used as a liveness check
 	r.HandleFunc("/", rootHandler).Methods(http.MethodGet)
+	// Long-form path requests
 	r.HandleFunc("/v1/key/{key}", putHandler).Methods(http.MethodPut)
 	r.HandleFunc("/v1/key/{key}", getHandler).Methods(http.MethodGet)
 	r.HandleFunc("/v1/key/{key}", delHandler).Methods(http.MethodDelete)
+	// Short-form path requests
+	r.HandleFunc("/{key}", putHandler).Methods(http.MethodPut)
+	r.HandleFunc("/{key}", getHandler).Methods(http.MethodGet)
+	r.HandleFunc("/{key}", delHandler).Methods(http.MethodDelete)
 	return r
 }
 
