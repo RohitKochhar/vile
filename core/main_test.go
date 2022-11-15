@@ -11,7 +11,7 @@ func CreateStore(t *testing.T) Store {
 	t.Helper() // Marks the function as a test helper
 	// This code should be changed depending on the method
 	// that the store is implemented in the code
-	return make(map[string]string)
+	return Store{m: make(map[string]string)}
 }
 
 // TestPut uses table-driven testing to test a variety
