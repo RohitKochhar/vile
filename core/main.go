@@ -1,27 +1,38 @@
 package core
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
-// store is the most simple key-value store abstraction
-// used for the initial stages of development
-var store = make(map[string]string)
+// Store type is a simple concurrent-safe map
+type Store struct {
+	sync.RWMutex
+	m map[string]string
+}
 
-// Store type is defined for test consistency
-type Store map[string]string
+var store = Store{m: make(map[string]string)}
 
 var ErrNoSuchKey = errors.New("no such key")
 
 // Put adds the provided key value pair into the store
 func Put(key string, value string) error {
-	store[key] = value
+	// Ensure operation is concurrent-safe
+	store.Lock()
+	defer store.Unlock()
+	// Write value to the store
+	store.m[key] = value
 	return nil
 }
 
 // Get returns the value associated with the provided key
 // from the store or an error if the key was invalid
 func Get(key string) (string, error) {
+	// Ensure operation is concurrent-safe
+	store.RLock()
+	defer store.RUnlock()
 	// Attempt to get the value from the store
-	value, ok := store[key]
+	value, ok := store.m[key]
 	if !ok {
 		return "", ErrNoSuchKey
 	}
@@ -31,6 +42,9 @@ func Get(key string) (string, error) {
 // Delete removes the value associated with the provided key
 // and returns an error if the deletion was unsuccessful
 func Delete(key string) error {
-	delete(store, key)
+	// Ensure operation is concurrent-safe
+	store.Lock()
+	defer store.Unlock()
+	delete(store.m, key)
 	return nil
 }
