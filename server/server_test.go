@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -14,9 +15,19 @@ import (
 func setupAPI(t *testing.T) (string, func()) {
 	t.Helper() // Mark the function as test helper
 	ts := httptest.NewServer(NewMux())
+	// Create a temp transaction file
+	file, err := os.CreateTemp("", "transaction.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := InitializeTransactionLog(file.Name()); err != nil {
+		t.Fatal(err)
+	}
 	return ts.URL, func() {
 		ts.Close()
+		os.Remove(file.Name())
 	}
+
 }
 
 // TestGet tests HTTP get method on the server's root
