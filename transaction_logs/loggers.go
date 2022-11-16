@@ -3,9 +3,12 @@ package transaction_logs
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
+
 	// transaction_logs needs core access to write to store when loading
 	// information from the transaction logs
+	"rohitsingh/vile/core"
 )
 
 // TransactionLogger interface defines the required
@@ -82,26 +85,31 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 	scanner := bufio.NewScanner(l.file) // Scanner for the logger to read the log file
 	outEvent := make(chan Event)        // Unbuffered event channel to stream concurrent events
 	outError := make(chan error, 1)     // Buffered error channel to stream concurrent errors
+	breakCond := false
 	go func() {
 		var e Event // Event object to store data parsed from log
 		// Close the channels when the goroutine ends
 		defer close(outEvent)
 		defer close(outError)
-		for scanner.Scan() {
+		for scanner.Scan() && !breakCond {
 			line := scanner.Text()
-			if _, err := fmt.Sscanf(line, "%d\t%d\t%s\t%s",
-				&e.Sequence, &e.EventType, &e.Key, &e.Value); err != nil {
+			fmt.Println(line)
+			_, err := fmt.Sscanf(line, "%d\t%d\t%s\t%s", &e.Sequence, &e.EventType, &e.Key, &e.Value)
+			if err != nil && err != io.EOF {
 				outError <- fmt.Errorf("unexpected error while parsing input: %w", err)
 				return
 			}
-			// Check that the sequence numbers are in increasing order as we would expect
-			if l.lastSequence >= e.Sequence {
-				outError <- fmt.Errorf("transaction numbers out of sequence")
-				return
+			if err == nil {
+				// Check that the sequence numbers are in increasing order as we would expect
+				if l.lastSequence >= e.Sequence {
+					outError <- fmt.Errorf("transaction numbers out of sequence")
+					return
+				}
+				// Update the last event of the logger and transmit the event over the channel
+				l.lastSequence = e.Sequence
+				outEvent <- e
 			}
-			// Update the last event of the logger and transmit the event over the channel
-			l.lastSequence = e.Sequence
-			outEvent <- e
+
 		}
 		if err := scanner.Err(); err != nil {
 			outError <- fmt.Errorf("transaction log read failure: %w", err)
@@ -124,4 +132,29 @@ func (l *FileTransactionLogger) WriteDelete(key string) {
 // Err method returns any errors that have been read from the logger's error channel
 func (l *FileTransactionLogger) Err() <-chan error {
 	return l.errors
+}
+
+// initializeTransactionLog creates a TransactionLogger object, watches for events and logs
+// them accordingly
+func InitializeTransactionLog(filepath string) (*FileTransactionLogger, error) {
+	transact, err := NewFileTransactionLogger(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("unexpected error while creating event logger: %w", err)
+	}
+	events, errors := transact.ReadEvents()
+	e, ok := Event{}, true
+	for ok && err == nil {
+		select {
+		case err, ok = <-errors:
+		case e, ok = <-events:
+			switch e.EventType {
+			case EventDelete:
+				err = core.Delete(e.Key)
+			case EventPut:
+				err = core.Put(e.Key, e.Value)
+			}
+		}
+	}
+	transact.Run()
+	return transact, err
 }

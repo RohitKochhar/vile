@@ -38,12 +38,18 @@ func NewMux() http.Handler {
 // StartServer creates a mux.NewRouter and attaches handlers to it
 func StartServer() {
 	// Initialize the logger
-	if err := InitializeTransactionLog("/Users/rohitsingh/Development/F22/cloud-native-go/vile/transaction.log"); err != nil {
+	txFilepath := "/Users/rohitsingh/Development/F22/cloud-native-go/vile/transaction.log"
+	var err error
+	transact, err = transaction_logs.InitializeTransactionLog(txFilepath)
+	if err != nil {
 		panic(err)
 	}
-	// defer os.Remove("/Users/rohitsingh/Development/F22/cloud-native-go/vile/transaction.log")
+	log.Printf("Using transaction log located at %s", txFilepath)
+	// Initialize the server
+	port := 8080
 	r := NewMux()
-	err := http.ListenAndServe(":8080", r)
+	log.Printf("Ready to accept connections on vile server at localhost:%d", port)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), r)
 	if err != nil {
 		fmt.Printf("error while listening and serving: %q", err)
 	}
@@ -126,31 +132,4 @@ func delHandler(w http.ResponseWriter, r *http.Request) {
 	transact.WriteDelete(key)
 	msg := fmt.Sprintf("Successfully deleted entry %s", key)
 	replyTextContent(w, r, http.StatusOK, msg)
-}
-
-// initializeTransactionLog creates a TransactionLogger object, watches for events and logs
-// them accordingly
-func InitializeTransactionLog(filepath string) error {
-	var err error
-	// ToDo: Change location to not be hardcoded
-	transact, err = transaction_logs.NewFileTransactionLogger(filepath)
-	if err != nil {
-		return fmt.Errorf("unexpected error while creating event logger: %w", err)
-	}
-	events, errors := transact.ReadEvents()
-	e, ok := transaction_logs.Event{}, true
-	for ok && err == nil {
-		select {
-		case err, ok = <-errors:
-		case e, ok = <-events:
-			switch e.EventType {
-			case transaction_logs.EventDelete:
-				err = core.Delete(e.Key)
-			case transaction_logs.EventPut:
-				err = core.Put(e.Key, e.Value)
-			}
-		}
-	}
-	transact.Run()
-	return err
 }

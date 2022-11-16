@@ -8,6 +8,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	// server needs transaction_logs access to record
+	// HTTP request history in the transaction log
+	"rohitsingh/vile/transaction_logs"
 )
 
 // setupAPI is a helper function that sets up
@@ -20,7 +24,8 @@ func setupAPI(t *testing.T) (string, func()) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := InitializeTransactionLog(file.Name()); err != nil {
+	transact, err = transaction_logs.InitializeTransactionLog(file.Name())
+	if err != nil {
 		t.Fatal(err)
 	}
 	return ts.URL, func() {
