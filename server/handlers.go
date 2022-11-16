@@ -48,7 +48,7 @@ func StartServer() {
 	// Initialize the server
 	port := 8080
 	r := NewMux()
-	log.Printf("Ready to accept connections on vile server at localhost:%d", port)
+	log.Printf("Ready to accept connections on vile server at localhost:%d\n\n", port)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", port), r)
 	if err != nil {
 		fmt.Printf("error while listening and serving: %q", err)
@@ -59,7 +59,7 @@ func StartServer() {
 func replyTextContent(w http.ResponseWriter, r *http.Request, status int, content string) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
-	w.Write([]byte(content))
+	w.Write([]byte(content + "\n"))
 }
 
 // replyError wraps text content in an HTTP error response and sends it
@@ -81,6 +81,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 // putHandler expects to be called with a PUT request
 // for the "/v1/key/{}" resource
 func putHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Received PUT request")
 	// Get the variables from the path
 	key := mux.Vars(r)["key"]
 	// The request body has our value
@@ -102,15 +103,16 @@ func putHandler(w http.ResponseWriter, r *http.Request) {
 
 // getHandler returns the value stored at the key localted at /v1/key/{}
 func getHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Received GET request")
 	key := mux.Vars(r)["key"] // The name of the key we are getting the value of
 	value, err := core.Get(key)
 	if errors.Is(err, core.ErrNoSuchKey) {
-		msg := fmt.Sprintf("Could not find key=%s", key)
+		msg := fmt.Sprintf("Could not find %s", key)
 		replyError(w, r, http.StatusNotFound, msg)
 		return
 	}
 	if err != nil {
-		msg := fmt.Sprintf("Error while getting key=%s", key)
+		msg := fmt.Sprintf("Error while getting %s", key)
 		replyError(w, r, http.StatusInternalServerError, msg)
 		return
 	}
@@ -119,6 +121,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 
 // delHandler removes the value of the key provided in the path
 func delHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Received DELETE request")
 	key := mux.Vars(r)["key"]
 	if err := core.Delete(key); err != nil {
 		if errors.Is(err, core.ErrNoSuchKey) {

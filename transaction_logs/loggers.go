@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	// transaction_logs needs core access to write to store when loading
@@ -85,15 +86,15 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 	scanner := bufio.NewScanner(l.file) // Scanner for the logger to read the log file
 	outEvent := make(chan Event)        // Unbuffered event channel to stream concurrent events
 	outError := make(chan error, 1)     // Buffered error channel to stream concurrent errors
-	breakCond := false
+	restoredLines := 0
 	go func() {
 		var e Event // Event object to store data parsed from log
 		// Close the channels when the goroutine ends
 		defer close(outEvent)
 		defer close(outError)
-		for scanner.Scan() && !breakCond {
+		for scanner.Scan() {
+			restoredLines++
 			line := scanner.Text()
-			fmt.Println(line)
 			_, err := fmt.Sscanf(line, "%d\t%d\t%s\t%s", &e.Sequence, &e.EventType, &e.Key, &e.Value)
 			if err != nil && err != io.EOF {
 				outError <- fmt.Errorf("unexpected error while parsing input: %w", err)
@@ -109,13 +110,18 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 				l.lastSequence = e.Sequence
 				outEvent <- e
 			}
-
 		}
 		if err := scanner.Err(); err != nil {
 			outError <- fmt.Errorf("transaction log read failure: %w", err)
 			return
 		}
+		if restoredLines > 1 {
+			log.Print("Restored vile store from transaction log")
+		} else {
+			log.Print("No transaction log found, creating new vile store")
+		}
 	}()
+
 	return outEvent, outError
 }
 
