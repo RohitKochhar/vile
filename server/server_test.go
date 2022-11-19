@@ -5,8 +5,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+
+	// server needs transaction_logs access to record
+	// HTTP request history in the transaction log
+	"rohitsingh/vile/transaction_logs"
 )
 
 // setupAPI is a helper function that sets up
@@ -14,9 +19,20 @@ import (
 func setupAPI(t *testing.T) (string, func()) {
 	t.Helper() // Mark the function as test helper
 	ts := httptest.NewServer(NewMux())
+	// Create a temp transaction file
+	file, err := os.CreateTemp("", "transaction.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	transact, err = transaction_logs.InitializeTransactionLog(file.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
 	return ts.URL, func() {
 		ts.Close()
+		os.Remove(file.Name())
 	}
+
 }
 
 // TestGet tests HTTP get method on the server's root

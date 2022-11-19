@@ -2,16 +2,21 @@ package core
 
 import (
 	"errors"
+	"os"
 	"sync"
 )
 
 // Store type is a simple concurrent-safe map
 type Store struct {
 	sync.RWMutex
-	m map[string]string
+	key []byte
+	m   map[string]string
 }
 
-var store = Store{m: make(map[string]string)}
+var store = Store{
+	m:   make(map[string]string),
+	key: []byte(os.Getenv("VILE_SECRET_KEY")),
+}
 
 var ErrNoSuchKey = errors.New("no such key")
 
@@ -20,7 +25,6 @@ func Put(key string, value string) error {
 	// Ensure operation is concurrent-safe
 	store.Lock()
 	defer store.Unlock()
-	// Write value to the store
 	store.m[key] = value
 	return nil
 }
