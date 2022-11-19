@@ -38,7 +38,7 @@ func NewMux() http.Handler {
 // StartServer creates a mux.NewRouter and attaches handlers to it
 func StartServer() {
 	// Initialize the logger
-	txFilepath := "/Users/rohitsingh/Development/F22/cloud-native-go/vile/transaction.log"
+	txFilepath := "./transaction.log"
 	var err error
 	transact, err = transaction_logs.InitializeTransactionLog(txFilepath)
 	if err != nil {
@@ -48,8 +48,8 @@ func StartServer() {
 	// Initialize the server
 	port := 8080
 	r := NewMux()
-	log.Printf("Ready to accept connections on vile server at localhost:%d\n\n", port)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", port), r)
+	log.Printf("Ready to accept connections on vile server at https://localhost:%d\n\n", port)
+	err = http.ListenAndServeTLS(fmt.Sprintf(":%d", port), "./keys/localhost.crt", "./keys/localhost.key", r)
 	if err != nil {
 		fmt.Printf("error while listening and serving: %q", err)
 	}

@@ -5,18 +5,9 @@ import (
 	"testing"
 )
 
-// CreateStore is a helper function that creates a
-// key-value store for testing
-func CreateStore(t *testing.T) Store {
-	t.Helper() // Marks the function as a test helper
-	// This code should be changed depending on the method
-	// that the store is implemented in the code
-	return Store{m: make(map[string]string)}
-}
-
 // TestPut uses table-driven testing to test a variety
 // of test cases for the Store's put functionality
-func TestPut(t *testing.T) {
+func TestCorePut(t *testing.T) {
 	testCases := []struct {
 		name        string // Test case name
 		key         string // Keys to write to
@@ -73,7 +64,7 @@ func TestPut(t *testing.T) {
 
 // TestIntegration tests that a user can put, get, delete and then
 // not get a value from the store
-func TestIntegration(t *testing.T) {
+func TestCoreIntegration(t *testing.T) {
 	key := "key1"
 	val := "val1"
 	// First we store an arbitrary value which should

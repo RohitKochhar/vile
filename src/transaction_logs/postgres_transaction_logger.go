@@ -3,6 +3,8 @@ package transaction_logs
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"sync"
 
 	_ "github.com/lib/pq"
 )
@@ -10,9 +12,10 @@ import (
 // PostgresTransactionLogger is a struct the satisfies the TransactionLogger
 // interface, and writes logs to a Postgres database
 type PostgresTransactionLogger struct {
-	events chan<- Event // Write-only channel for sending events
-	errors <-chan error // Read-only channel for receiving errors
-	db     *sql.DB      // Database access interface
+	events chan<- Event   // Write-only channel for sending events
+	errors <-chan error   // Read-only channel for receiving errors
+	db     *sql.DB        // Database access interface
+	wg     sync.WaitGroup // Wait-group for concurrency
 }
 
 // PostgresDBConfig is a type containing information to configure the postgres db
@@ -27,7 +30,7 @@ type PostgresDBConfig struct {
 // It takes PostgresDBConfig object containing db configuration information
 // It returns a TransactionLogger interface or any errors if they occur
 func NewPostgresTransactionLogger(c PostgresDBConfig) (TransactionLogger, error) {
-	connStr := fmt.Sprintf("host=%s dbname=%s user=%s password=%s",
+	connStr := fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable",
 		c.host, c.dbName, c.user, c.password,
 	)
 	// Open connection to database
@@ -37,7 +40,7 @@ func NewPostgresTransactionLogger(c PostgresDBConfig) (TransactionLogger, error)
 	}
 	// Test database connection
 	err = db.Ping()
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("error while testing database connection: %q", err)
 	}
 	logger := &PostgresTransactionLogger{db: db}
@@ -88,7 +91,7 @@ func (l *PostgresTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 		// Close the channels when the goroutine ends
 		defer close(outEvent)
 		defer close(outError)
-		query := `SELECT sequence, event_type, key, value FROM transcations
+		query := `SELECT sequence, event_type, key, value FROM transactions
 				ORDER BY sequence`
 		rows, err := l.db.Query(query)
 		if err != nil {
@@ -133,6 +136,22 @@ func (l *PostgresTransactionLogger) Err() <-chan error {
 	return l.errors
 }
 
+// Wait method blocks until all concurrent threads have completed
+func (l *PostgresTransactionLogger) Wait() {
+	l.wg.Wait()
+}
+
+// Close method gracefully closes transactionlogger
+func (l *PostgresTransactionLogger) Close() error {
+	l.wg.Wait()
+
+	if l.events != nil {
+		close(l.events)
+	}
+
+	return l.db.Close()
+}
+
 // verifyTableExists
 func (l *PostgresTransactionLogger) verifyTableExists() (bool, error) {
 	const table = "transactions"
@@ -140,6 +159,7 @@ func (l *PostgresTransactionLogger) verifyTableExists() (bool, error) {
 	var result string
 
 	rows, err := l.db.Query(fmt.Sprintf("SELECT to_regclass('public.%s');", table))
+
 	if err != nil {
 		return false, err
 	}
@@ -168,4 +188,8 @@ func (l *PostgresTransactionLogger) createTable() error {
 	}
 
 	return nil
+}
+
+func (l *PostgresTransactionLogger) LastSequence() uint64 {
+	return 0
 }
