@@ -18,7 +18,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var transact *transaction_logs.FileTransactionLogger
+var transact transaction_logs.TransactionLogger
 
 func NewMux() http.Handler {
 	r := mux.NewRouter()
