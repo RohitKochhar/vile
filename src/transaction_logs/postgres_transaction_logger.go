@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"sync"
 
 	_ "github.com/lib/pq"
@@ -34,6 +35,7 @@ func NewPostgresTransactionLogger(c PostgresDBConfig) (TransactionLogger, error)
 		c.host, c.dbName, c.user, c.password,
 	)
 	// Open connection to database
+	log.Println("Attempting to open connection to postgres database...")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("error while opening database: %q", err)
@@ -43,6 +45,7 @@ func NewPostgresTransactionLogger(c PostgresDBConfig) (TransactionLogger, error)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("error while testing database connection: %q", err)
 	}
+	log.Println("Successfully connected to postgres database")
 	logger := &PostgresTransactionLogger{db: db}
 	// Check that the table exists
 	exists, err := logger.verifyTableExists()

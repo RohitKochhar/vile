@@ -23,14 +23,20 @@ type TransactionLogger interface {
 
 // initializeTransactionLog creates a TransactionLogger object, watches for events and logs
 // them accordingly
+// If filepath is an empty string, a postgres db is created instead
 func InitializeTransactionLog(filepath string) (TransactionLogger, error) {
-	// transact, err := NewFileTransactionLogger(filepath)
-	transact, err := NewPostgresTransactionLogger(PostgresDBConfig{
-		host:     "host.docker.internal",
-		dbName:   "vile",
-		user:     "test",
-		password: "password",
-	})
+	var transact TransactionLogger
+	var err error
+	if filepath == "" {
+		transact, err = NewPostgresTransactionLogger(PostgresDBConfig{
+			host:     "host.docker.internal",
+			dbName:   "vile",
+			user:     "test",
+			password: "password",
+		})
+	} else {
+		transact, err = NewFileTransactionLogger(filepath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unexpected error while creating event logger: %w", err)
 	}

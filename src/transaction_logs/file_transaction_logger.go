@@ -81,6 +81,7 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 				outError <- fmt.Errorf("transaction numbers out of sequence")
 				return
 			}
+			l.lastSequence = e.Sequence
 			outEvent <- e
 
 		}

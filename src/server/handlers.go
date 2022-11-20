@@ -38,7 +38,7 @@ func NewMux() http.Handler {
 // StartServer creates a mux.NewRouter and attaches handlers to it
 func StartServer() {
 	// Initialize the logger
-	txFilepath := "./transaction.log"
+	txFilepath := "" // Left blank to use a postgres db
 	var err error
 	transact, err = transaction_logs.InitializeTransactionLog(txFilepath)
 	if err != nil {
