@@ -42,7 +42,6 @@ func InitializeTransactionLog(filepath string) (TransactionLogger, error) {
 		case e, ok = <-events:
 			switch e.EventType {
 			case EventDelete:
-				fmt.Println("This isn't showing ")
 				err = core.Delete(e.Key)
 			case EventPut:
 				err = core.Put(e.Key, e.Value)
