@@ -7,5 +7,5 @@ import (
 
 func main() {
 	log.Print("Starting vile...")
-	server.StartServer()
+	server.Run()
 }

@@ -35,8 +35,8 @@ func NewMux() http.Handler {
 	return r
 }
 
-// StartServer creates a mux.NewRouter and attaches handlers to it
-func StartServer() {
+// Run creates a mux.NewRouter and attaches handlers to it
+func Run() {
 	// Initialize the logger
 	txFilepath := "" // Left blank to use a postgres db
 	var err error

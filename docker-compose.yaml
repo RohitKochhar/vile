@@ -15,3 +15,16 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
+
+  # pgadmin:
+  #   container_name: pgadmin4_container
+  #   image: dpage/pgadmin4:5.5
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@admin.com
+  #     PGADMIN_DEFAULT_PASSWORD: secret
+  #     PGADMIN_LISTEN_PORT: 80
+  #   ports:
+  #     - "8081:80"
+  #   depends_on:
+  #     - postgres
